@@ -246,6 +246,10 @@
           <label for="collegeWebsite">Website (optional)</label>
           <input type="url" id="collegeWebsite" placeholder="https://aiims.edu" />
         </div>
+        <div class="form-group">
+          <label for="collegeImageUrl">Campus Photo URL (optional)</label>
+          <input type="url" id="collegeImageUrl" placeholder="https://... (leave empty for auto photo)" />
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeModal('modalAddCollege')">Cancel</button>
@@ -293,6 +297,120 @@
           <span id="btnImportConfirmText">Import All</span>
           <span class="btn-spinner" id="btnImportConfirmSpinner" style="display:none;"></span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- College Detail & Photos Modal -->
+  <div class="modal-overlay" id="modalCollegeDetail">
+    <div class="modal modal-detail">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="detail-badge" id="modalCollegeTag">Medical Institute / Hospital</span>
+          <h2 id="modalCollegeTitle">College Name</h2>
+          <div class="modal-subtitle" id="modalCollegeCity">City, State</div>
+        </div>
+        <button class="btn-close" onclick="closeModal('modalCollegeDetail')">&times;</button>
+      </div>
+
+      <div class="modal-body modal-detail-body">
+        <!-- Media View Tabs -->
+        <div class="detail-media-tabs">
+          <button class="detail-tab-btn active" id="tabBtnPhoto" onclick="switchDetailMediaTab('photo')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            Campus Photo
+          </button>
+          <button class="detail-tab-btn" id="tabBtnSatellite" onclick="switchDetailMediaTab('satellite')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Satellite Aerial View
+          </button>
+        </div>
+
+        <!-- Campus Photo Hero Container -->
+        <div class="detail-hero-wrap" id="detailPhotoPane">
+          <div class="detail-hero-img-container">
+            <img id="modalCollegeHeroImg" class="detail-hero-img" src="" alt="College Campus" />
+            <div class="detail-img-gradient"></div>
+            <div class="detail-img-chips">
+              <span class="img-chip-loc" id="modalCollegeImgChipLoc">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span id="modalCollegeImgCity">City</span>
+              </span>
+              <a id="modalCollegeImgFullLink" href="#" target="_blank" class="img-chip-action" title="Open full resolution photo in new tab">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                Full Resolution
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Satellite Aerial View Container -->
+        <div class="detail-satellite-wrap" id="detailSatellitePane" style="display:none;">
+          <div id="collegeSatelliteMap" class="detail-satellite-map"></div>
+          <div class="satellite-caption">
+            <span>🛰️ High-resolution satellite aerial imagery (Esri World Imagery)</span>
+          </div>
+        </div>
+
+        <!-- Google Photos Live Search Banner -->
+        <a id="modalCollegeGooglePhotosLink" href="#" target="_blank" class="detail-photo-banner" title="Explore live visitor photos on Google Maps">
+          <div class="photo-banner-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </div>
+          <div class="photo-banner-text">
+            <strong>See 100+ Live Photos &amp; Reviews on Google Maps</strong>
+            <span>View entrance, hospital departments, surrounding campus &amp; 360&deg; street view</span>
+          </div>
+          <div class="photo-banner-arrow">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </a>
+
+        <!-- Distance & Routing Box -->
+        <div class="detail-distance-box">
+          <div class="detail-dist-header">
+            <div class="detail-dist-from">
+              <span class="detail-dist-dot"></span>
+              Distance from: <strong id="modalCollegeOriginHome">Kaziwad Bhavnagar</strong>
+            </div>
+            <div class="detail-dist-main" id="modalCollegeDistKm">-- km</div>
+          </div>
+          <div class="detail-dist-grid" id="modalCollegeDistStats">
+            <!-- Travel times and comparisons injected via JS -->
+          </div>
+        </div>
+
+        <!-- College Metadata Grid -->
+        <div class="detail-info-grid">
+          <div class="detail-info-card">
+            <div class="info-label">Address</div>
+            <div class="info-val" id="modalCollegeAddress">—</div>
+          </div>
+          <div class="detail-info-card">
+            <div class="info-label">GPS Coordinates</div>
+            <div class="info-val coords-val" id="modalCollegeCoords">—</div>
+          </div>
+          <div class="detail-info-card" id="modalCollegePhoneBox" style="display:none;">
+            <div class="info-label">Phone</div>
+            <div class="info-val" id="modalCollegePhone">—</div>
+          </div>
+          <div class="detail-info-card" id="modalCollegeWebsiteBox" style="display:none;">
+            <div class="info-label">Website</div>
+            <div class="info-val" id="modalCollegeWebsite">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer detail-modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalCollegeDetail')">Close</button>
+        <button class="btn-tool-action" id="btnDetailFocusMap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
+          Show Line on Map
+        </button>
+        <a id="btnDetailDirections" href="#" target="_blank" class="btn-primary-action">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+          Directions
+        </a>
       </div>
     </div>
   </div>

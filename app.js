@@ -106,6 +106,49 @@ const DEFAULT_HOME = {
 };
 
 // ──────────────────────────────────────────────────
+// VERIFIED HOSPITAL & MEDICAL CAMPUS IMAGERY
+// ──────────────────────────────────────────────────
+const COLLEGE_IMAGES = [
+  "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1504813184591-01572f98c85f?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1512678080530-7760d81faba6?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1582750433449-648ed127bb54?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1519494080410-f9aa76cb4283?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1527613426441-4da17471b66d?auto=format&fit=crop&w=800&q=80",
+  "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=800&q=80"
+];
+
+const DEFAULT_FALLBACK_IMG = COLLEGE_IMAGES[0];
+
+function getCollegeImage(college) {
+  if (!college) return DEFAULT_FALLBACK_IMG;
+  if (college.imageUrl && college.imageUrl.trim()) {
+    return college.imageUrl.trim();
+  }
+  // Deterministic hash based on hospital name and city
+  const key = (college.name || '') + (college.city || '');
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash << 5) - hash + key.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % COLLEGE_IMAGES.length;
+  return COLLEGE_IMAGES[index];
+}
+
+// ──────────────────────────────────────────────────
 // STATE
 // ──────────────────────────────────────────────────
 let state = {
@@ -343,10 +386,32 @@ function addCollegeMarker(college) {
   }
   const home = getActiveHome();
   const dist = home ? getCollegeDistance(college, home) : null;
-  const distInfo = dist ? `<div style="color:#38bdf8;font-weight:700;margin-top:4px;">📏 ${dist.km} km from ${home.name}</div>` : '';
+  const distInfo = dist ? `<div class="popup-dist-badge">📏 ${dist.km} km from ${escHtml(home.name)}</div>` : '';
+  const imgUrl = getCollegeImage(college);
+  const routeUrl = home?.lat && college?.lat
+    ? `https://www.google.com/maps/dir/${home.lat},${home.lng}/${college.lat},${college.lng}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(college.name + ' ' + (college.city || college.address))}`;
+
+  const popupHtml = `
+    <div class="map-popup-card">
+      <div class="popup-img-wrap" onclick="openCollegeDetailModal('${college.id}')" title="Click to view full photos &amp; details">
+        <img src="${imgUrl}" class="popup-thumb" alt="${escHtml(college.name)}" onerror="this.src='${DEFAULT_FALLBACK_IMG}'" />
+        <span class="popup-photo-badge">📸 Photos</span>
+      </div>
+      <div class="popup-body">
+        <div class="popup-title" onclick="openCollegeDetailModal('${college.id}')" style="cursor:pointer;" title="View college photos">${escHtml(college.name)}</div>
+        <div class="popup-sub">${escHtml(college.city || college.address)}</div>
+        ${distInfo}
+        <div class="popup-btns">
+          <button class="popup-btn-detail" onclick="openCollegeDetailModal('${college.id}')">📸 Photos &amp; Details</button>
+          <button class="popup-btn-dir" onclick="window.open('${routeUrl}','_blank')">🚗 Route</button>
+        </div>
+      </div>
+    </div>
+  `;
 
   const marker = L.marker([college.lat, college.lng], { icon: createCollegeIcon() })
-    .bindPopup(`<strong>${escHtml(college.name)}</strong><br/><span style="font-size:0.78rem;color:#94a3b8">${escHtml(college.address)}</span>${distInfo}`)
+    .bindPopup(popupHtml, { maxWidth: 260 })
     .addTo(state.map);
   
   marker.on('click', () => {
@@ -447,19 +512,25 @@ function drawDistanceLines() {
       ? `🚗 <b>${dist.exactKm} km drive</b> (${dist.driveText})<br/><span style="color:#94a3b8;font-size:0.75rem;">📏 ${dist.directKm} km direct</span>`
       : `📏 <b>${dist.km} km direct distance</b>`;
 
+    const imgUrl = getCollegeImage(college);
     const popupHtml = `
-      <div style="font-size:0.85rem;line-height:1.45;min-width:200px;">
-        <strong style="color:#f8fafc;font-size:0.92rem;">${escHtml(college.name)}</strong>
-        <div style="color:#94a3b8;font-size:0.78rem;margin:3px 0 6px;">📍 ${escHtml(college.city || college.address)}</div>
-        <div style="background:rgba(6,182,212,0.15);border:1px solid rgba(6,182,212,0.3);padding:6px 10px;border-radius:6px;color:#38bdf8;margin-bottom:8px;">
-          ${descText}
+      <div class="map-popup-card">
+        <div class="popup-img-wrap" onclick="openCollegeDetailModal('${college.id}')" title="Click to view full photos &amp; details">
+          <img src="${imgUrl}" class="popup-thumb" alt="${escHtml(college.name)}" onerror="this.src='${DEFAULT_FALLBACK_IMG}'" />
+          <span class="popup-photo-badge">📸 View Campus</span>
         </div>
-        <div style="display:flex;gap:6px;">
-          <a href="${routeUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#6366f1;color:#fff;border-radius:4px;text-decoration:none;font-size:0.75rem;font-weight:600;">Directions ↗</a>
+        <div class="popup-body">
+          <div class="popup-title" onclick="openCollegeDetailModal('${college.id}')" style="cursor:pointer;" title="View college photos">${escHtml(college.name)}</div>
+          <div class="popup-sub">📍 ${escHtml(college.city || college.address)}</div>
+          <div class="popup-dist-badge">${descText}</div>
+          <div class="popup-btns">
+            <button class="popup-btn-detail" onclick="openCollegeDetailModal('${college.id}')">📸 Photos &amp; Details</button>
+            <a href="${routeUrl}" target="_blank" class="popup-btn-dir" style="text-decoration:none;display:inline-flex;align-items:center;">Route ↗</a>
+          </div>
         </div>
       </div>
     `;
-    polyline.bindPopup(popupHtml);
+    polyline.bindPopup(popupHtml, { maxWidth: 260 });
 
     // Hover & Click interactions
     polyline.on('mouseover', () => highlightPolyline(college.id, true));
@@ -681,49 +752,55 @@ function buildCollegeCard(college, home) {
   card.id = `card-${college.id}`;
 
   const distHtml = buildDistanceHtml(college, home);
+  const collegeImg = getCollegeImage(college);
 
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(college.name + ' ' + college.address)}`;
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(college.name + ' ' + (college.city || college.address))}`;
   const routeUrl = home?.lat && college?.lat
     ? `https://www.google.com/maps/dir/${home.lat},${home.lng}/${college.lat},${college.lng}`
     : '';
 
   card.innerHTML = `
-    <div class="card-top">
-      <div class="card-icon">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-        </svg>
+    <div class="card-top" onclick="openCollegeDetailModal('${college.id}')" title="Click to view campus photos &amp; details">
+      <div class="card-photo-thumb" title="Campus Photo — Click to enlarge">
+        <img src="${collegeImg}" alt="${escHtml(college.name)}" loading="lazy" onerror="this.src='${DEFAULT_FALLBACK_IMG}'" />
+        <span class="thumb-photo-icon">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </span>
       </div>
       <div class="card-info">
-        <div class="card-name">${escHtml(college.name)}</div>
+        <div class="card-name" title="Click to view photos &amp; details">${escHtml(college.name)}</div>
         <div class="card-city">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           ${escHtml(college.city || college.address || '—')}
         </div>
       </div>
-      <button class="card-delete" title="Remove college" onclick="deleteCollege('${college.id}')">
+      <button class="card-delete" title="Remove college" onclick="event.stopPropagation(); deleteCollege('${college.id}')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
 
-    <div class="distance-section" id="dist-${college.id}">
+    <div class="distance-section" id="dist-${college.id}" onclick="openCollegeDetailModal('${college.id}')" style="cursor:pointer;" title="Click to view distance breakdown">
       ${distHtml}
     </div>
 
     <div class="card-actions">
-      <button class="btn-card-action btn-card-viewmap" title="Focus distance line on map" onclick="focusCollegeOnMap('${college.id}')">
+      <button class="btn-card-action btn-card-photo" title="View Campus Photos &amp; Details" onclick="event.stopPropagation(); openCollegeDetailModal('${college.id}')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Photos
+      </button>
+      <button class="btn-card-action btn-card-viewmap" title="Focus distance line on map" onclick="event.stopPropagation(); focusCollegeOnMap('${college.id}')">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
         Line
       </button>
-      <button class="btn-card-action btn-card-maps" onclick="window.open('${mapsUrl}','_blank')">
+      <button class="btn-card-action btn-card-maps" onclick="event.stopPropagation(); window.open('${mapsUrl}','_blank')">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
         Maps
       </button>
-      ${routeUrl ? `<button class="btn-card-action btn-card-route" onclick="window.open('${routeUrl}','_blank')">
+      ${routeUrl ? `<button class="btn-card-action btn-card-route" onclick="event.stopPropagation(); window.open('${routeUrl}','_blank')">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
         Directions
       </button>` : ''}
-      <button class="btn-card-action btn-card-refresh" title="Recalculate road distance" onclick="recalcCollege('${college.id}')">
+      <button class="btn-card-action btn-card-refresh" title="Recalculate road distance" onclick="event.stopPropagation(); recalcCollege('${college.id}')">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
       </button>
     </div>
@@ -880,11 +957,12 @@ function deleteHomeLocation(e, id) {
 // ACTIONS — COLLEGES
 // ──────────────────────────────────────────────────
 async function saveCollege() {
-  const name    = document.getElementById('collegeName').value.trim();
-  const address = document.getElementById('collegeAddress').value.trim();
-  const city    = document.getElementById('collegeCity').value.trim();
-  const phone   = document.getElementById('collegePhone').value.trim();
-  const website = document.getElementById('collegeWebsite').value.trim();
+  const name     = document.getElementById('collegeName').value.trim();
+  const address  = document.getElementById('collegeAddress').value.trim();
+  const city     = document.getElementById('collegeCity').value.trim();
+  const phone    = document.getElementById('collegePhone').value.trim();
+  const website  = document.getElementById('collegeWebsite').value.trim();
+  const imageUrl = document.getElementById('collegeImageUrl')?.value.trim() || '';
 
   if (!name || !address) { showToast('College name and address are required', 'error'); return; }
 
@@ -893,13 +971,13 @@ async function saveCollege() {
 
   try {
     const geo = await geocodeAddress(city ? `${address}, ${city}` : address);
-    const college = { id: uid(), name, address, city, phone, website, lat: geo.lat, lng: geo.lng };
+    const college = { id: uid(), name, address, city, phone, website, imageUrl, lat: geo.lat, lng: geo.lng };
     state.colleges.push(college);
     saveState();
     addCollegeMarker(college);
     renderColleges(document.getElementById('searchInput').value);
     closeModal('modalAddCollege');
-    clearForm(['collegeName','collegeAddress','collegeCity','collegePhone','collegeWebsite']);
+    clearForm(['collegeName','collegeAddress','collegeCity','collegePhone','collegeWebsite','collegeImageUrl']);
     showToast(`"${name}" added!`, 'success');
 
     const home = getActiveHome();
@@ -1335,10 +1413,13 @@ function wireEvents() {
   });
 
   // Close modals on backdrop click
-  ['modalHomeLocation','modalAddCollege','modalImportPDF'].forEach(id => {
-    document.getElementById(id).addEventListener('click', e => {
-      if (e.target === document.getElementById(id)) closeModal(id);
-    });
+  ['modalHomeLocation','modalAddCollege','modalImportPDF','modalCollegeDetail'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('click', e => {
+        if (e.target === el) closeModal(id);
+      });
+    }
   });
 
   // Import PDF button
@@ -1440,9 +1521,165 @@ function wireEvents() {
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      ['modalHomeLocation','modalAddCollege','modalImportPDF'].forEach(id => closeModal(id));
+      ['modalHomeLocation','modalAddCollege','modalImportPDF','modalCollegeDetail'].forEach(id => closeModal(id));
     }
   });
+}
+
+// ──────────────────────────────────────────────────
+// COLLEGE DETAIL & PHOTOS MODAL
+// ──────────────────────────────────────────────────
+let currentDetailCollege = null;
+let satelliteMap = null;
+let satelliteMarker = null;
+
+function openCollegeDetailModal(collegeId) {
+  const college = state.colleges.find(c => c.id === collegeId);
+  if (!college) return;
+  currentDetailCollege = college;
+
+  const home = getActiveHome();
+  const dist = home ? getCollegeDistance(college, home) : null;
+  const collegeImg = getCollegeImage(college);
+
+  // Set Titles & Badges
+  document.getElementById('modalCollegeTitle').textContent = college.name;
+  document.getElementById('modalCollegeCity').textContent = college.city 
+    ? `${college.city}${college.state ? ', ' + college.state : ''}` 
+    : (college.address || '—');
+  document.getElementById('modalCollegeTag').textContent = college.speciality || 'DNB Medical Institute / Hospital';
+
+  // Hero Image
+  const heroImg = document.getElementById('modalCollegeHeroImg');
+  heroImg.src = collegeImg;
+  heroImg.onerror = () => { heroImg.src = DEFAULT_FALLBACK_IMG; };
+  document.getElementById('modalCollegeImgCity').textContent = college.city || 'Hospital Campus';
+  document.getElementById('modalCollegeImgFullLink').href = collegeImg;
+
+  // Google Maps Photos search link
+  const queryStr = `${college.name} photos ${college.city || ''}`;
+  document.getElementById('modalCollegeGooglePhotosLink').href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryStr)}`;
+
+  // Distance Section
+  document.getElementById('modalCollegeOriginHome').textContent = home ? home.name : 'No home selected';
+  const distKmEl = document.getElementById('modalCollegeDistKm');
+  const distStatsEl = document.getElementById('modalCollegeDistStats');
+
+  if (dist) {
+    distKmEl.textContent = `${dist.km} km`;
+    distStatsEl.innerHTML = `
+      <div class="detail-stat-card">
+        <span class="stat-num">${dist.isDrive ? dist.exactKm + ' km' : dist.km + ' km'}</span>
+        <span class="stat-lbl">${dist.isDrive ? 'Road Distance' : 'Direct Line'}</span>
+      </div>
+      <div class="detail-stat-card">
+        <span class="stat-num">${dist.driveText || 'Calculating…'}</span>
+        <span class="stat-lbl">Drive Time</span>
+      </div>
+      <div class="detail-stat-card">
+        <span class="stat-num">${dist.walkText || (dist.directKm ? dist.directKm + ' km' : '—')}</span>
+        <span class="stat-lbl">${dist.walkText ? 'Walk Time' : 'Direct Dist'}</span>
+      </div>
+    `;
+  } else {
+    distKmEl.textContent = '—';
+    distStatsEl.innerHTML = `<div style="grid-column:1/-1;font-size:0.75rem;color:var(--text-muted)">Select a home location to calculate distance</div>`;
+  }
+
+  // Address & Metadata
+  document.getElementById('modalCollegeAddress').textContent = college.address || college.city || '—';
+  document.getElementById('modalCollegeCoords').textContent = (college.lat && college.lng)
+    ? `${college.lat.toFixed(4)}° N, ${college.lng.toFixed(4)}° E`
+    : 'Pending geocoding';
+
+  const phoneBox = document.getElementById('modalCollegePhoneBox');
+  if (college.phone) {
+    phoneBox.style.display = 'block';
+    document.getElementById('modalCollegePhone').innerHTML = `<a href="tel:${escHtml(college.phone)}" style="color:#38bdf8;text-decoration:none;">${escHtml(college.phone)}</a>`;
+  } else {
+    phoneBox.style.display = 'none';
+  }
+
+  const webBox = document.getElementById('modalCollegeWebsiteBox');
+  if (college.website) {
+    webBox.style.display = 'block';
+    document.getElementById('modalCollegeWebsite').innerHTML = `<a href="${escHtml(college.website)}" target="_blank" style="color:#38bdf8;text-decoration:none;">Visit Official Website ↗</a>`;
+  } else {
+    webBox.style.display = 'none';
+  }
+
+  // Footer Actions
+  const btnFocus = document.getElementById('btnDetailFocusMap');
+  btnFocus.onclick = () => {
+    closeModal('modalCollegeDetail');
+    focusCollegeOnMap(college.id);
+  };
+
+  const btnDir = document.getElementById('btnDetailDirections');
+  if (home?.lat && college?.lat) {
+    btnDir.href = `https://www.google.com/maps/dir/${home.lat},${home.lng}/${college.lat},${college.lng}`;
+    btnDir.style.display = 'inline-flex';
+  } else {
+    btnDir.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(college.name + ' ' + (college.city || college.address))}`;
+    btnDir.style.display = 'inline-flex';
+  }
+
+  // Default to photo view
+  switchDetailMediaTab('photo');
+
+  openModal('modalCollegeDetail');
+}
+
+function switchDetailMediaTab(tab) {
+  const photoPane = document.getElementById('detailPhotoPane');
+  const satPane = document.getElementById('detailSatellitePane');
+  const btnPhoto = document.getElementById('tabBtnPhoto');
+  const btnSat = document.getElementById('tabBtnSatellite');
+
+  if (tab === 'satellite') {
+    if (photoPane) photoPane.style.display = 'none';
+    if (satPane) satPane.style.display = 'block';
+    if (btnPhoto) btnPhoto.classList.remove('active');
+    if (btnSat) btnSat.classList.add('active');
+
+    initSatelliteMap(currentDetailCollege);
+  } else {
+    if (satPane) satPane.style.display = 'none';
+    if (photoPane) photoPane.style.display = 'block';
+    if (btnSat) btnSat.classList.remove('active');
+    if (btnPhoto) btnPhoto.classList.add('active');
+  }
+}
+
+function initSatelliteMap(college) {
+  if (!college || !college.lat || !college.lng) return;
+  const container = document.getElementById('collegeSatelliteMap');
+  if (!container) return;
+
+  if (!satelliteMap) {
+    satelliteMap = L.map('collegeSatelliteMap', {
+      zoomControl: true,
+      attributionControl: false,
+    });
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 18,
+      attribution: 'Esri World Imagery'
+    }).addTo(satelliteMap);
+  }
+
+  satelliteMap.setView([college.lat, college.lng], 16);
+
+  if (satelliteMarker) {
+    satelliteMap.removeLayer(satelliteMarker);
+  }
+
+  satelliteMarker = L.marker([college.lat, college.lng], {
+    icon: createCollegeIcon()
+  }).addTo(satelliteMap);
+
+  setTimeout(() => {
+    if (satelliteMap) satelliteMap.invalidateSize();
+  }, 120);
 }
 
 // ──────────────────────────────────────────────────
