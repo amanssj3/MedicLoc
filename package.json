@@ -1,0 +1,22 @@
+{
+  "name": "medroute",
+  "version": "1.0.0",
+  "description": "Medical College Distance Finder — Calculate driving and direct distances from your home to medical colleges with interactive map lines",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "python3 -m http.server 8080",
+    "build": "echo 'Static build ready'"
+  },
+  "keywords": [
+    "medical",
+    "colleges",
+    "distance",
+    "calculator",
+    "leaflet",
+    "maps",
+    "dnb"
+  ],
+  "author": "Antigravity",
+  "license": "MIT"
+}

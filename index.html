@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedRoute — Medical College Distance Finder</title>
+  <meta name="description" content="Find distances from your home to medical colleges. Compare travel times and plan your route to any medical college." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-left">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <span class="brand-name">MedRoute</span>
+      </div>
+      <button class="btn-sidebar-close" id="btnCloseSidebar" aria-label="Close sidebar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="sidebar-section-title">MY LOCATIONS</div>
+
+    <div class="home-locations-list" id="homeLocationsList"></div>
+
+    <button class="btn-add-location" id="btnAddHomeLocation">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Location
+    </button>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section-title">STATS</div>
+    <div class="sidebar-stats" id="sidebarStats">
+      <div class="stat-item">
+        <span class="stat-value" id="statColleges">0</span>
+        <span class="stat-label">Colleges</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="statLocations">0</span>
+        <span class="stat-label">Locations</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="statNearest">—</span>
+        <span class="stat-label">Nearest (km)</span>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+    <button class="btn-sidebar-action" id="btnImportPDF" title="Import colleges from PDF">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Import from PDF
+    </button>
+    <button class="btn-sidebar-action" id="btnClearAll" title="Clear all data">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+      Clear All Data
+    </button>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <!-- ── MAIN ── -->
+  <main class="main-content view-list">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-row-main">
+        <div class="topbar-left">
+          <button class="btn-menu-toggle" id="btnMenuToggle" aria-label="Toggle sidebar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div class="active-location-badge" id="activeLocationBadge" title="Click to view locations">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span id="activeLocationName">Select a home location</span>
+          </div>
+        </div>
+        <div class="topbar-actions-right">
+          <button class="btn-add-college" id="btnAddCollege">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span class="btn-text">Add College</span>
+          </button>
+        </div>
+      </div>
+      <div class="topbar-row-filters">
+        <div class="search-bar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="searchInput" placeholder="Search colleges, cities..." autocomplete="off" />
+        </div>
+        <div class="sort-controls">
+          <select id="sortSelect">
+            <option value="distance">Sort: Distance</option>
+            <option value="name">Sort: Name</option>
+            <option value="time">Sort: Travel Time</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <!-- Status Bar -->
+    <div class="status-bar" id="statusBar" style="display:none;">
+      <div class="status-spinner"></div>
+      <span id="statusText">Calculating distances…</span>
+    </div>
+
+    <!-- Content Area -->
+    <div class="content-area">
+      <!-- College Grid -->
+      <div class="colleges-panel" id="collegesPanel">
+        <div class="colleges-grid" id="collegesGrid">
+          <!-- Empty state -->
+          <div class="empty-state" id="emptyState">
+            <div class="empty-icon">
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <h3>Add a home location to get started</h3>
+            <p>73 hospitals from your DNB PDF are already loaded!<br/>Add your home address in the sidebar to calculate distances.</p>
+            <div class="empty-actions">
+              <button class="btn-primary" onclick="document.getElementById('btnAddHomeLocation').click()">Add Home Location</button>
+              <button class="btn-secondary" onclick="document.getElementById('btnAddCollege').click()">Add College</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map Panel -->
+      <div class="map-panel" id="mapPanel">
+        <div class="map-header">
+          <div class="map-title-wrap">
+            <span>Map View</span>
+            <span id="mapLineCountBadge" class="map-badge">Distance Lines</span>
+          </div>
+          <div class="map-toolbar">
+            <select id="lineFilterSelect" class="map-select" title="Filter lines from home">
+              <option value="all" selected>All Lines</option>
+              <option value="nearest10">Nearest 10</option>
+              <option value="nearest25">Nearest 25</option>
+              <option value="none">Hide Lines</option>
+            </select>
+            <button class="btn-tool active" id="btnToggleLabels" title="Toggle km distance badges on lines">
+              km
+            </button>
+            <button class="btn-icon" id="btnToggleMap" title="Toggle map">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+            </button>
+          </div>
+        </div>
+        <div id="map"></div>
+      </div>
+    </div>
+
+    <!-- Mobile View Switcher (Floating Segmented Toggle) -->
+    <div class="mobile-view-toggle" id="mobileViewToggle">
+      <button class="mobile-toggle-btn active" id="btnShowList">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        <span>List (<span id="mobileCountColleges">73</span>)</span>
+      </button>
+      <button class="mobile-toggle-btn" id="btnShowMap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+        <span>Map & Lines</span>
+      </button>
+    </div>
+  </main>
+
+  <!-- ══════════════════════════════════
+       MODALS
+  ══════════════════════════════════ -->
+
+  <!-- Add Home Location Modal -->
+  <div class="modal-overlay" id="modalHomeLocation">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Add Home Location</h2>
+        <button class="btn-close" onclick="closeModal('modalHomeLocation')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="homeLocName">Location Name <span class="required">*</span></label>
+          <input type="text" id="homeLocName" placeholder="e.g. Home, Parents' House, Hostel…" />
+        </div>
+        <div class="form-group">
+          <label for="homeLocAddress">Full Address <span class="required">*</span></label>
+          <textarea id="homeLocAddress" rows="3" placeholder="e.g. 123 MG Road, Bengaluru, Karnataka 560001"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1">
+            <label for="homeLocLat">Latitude (optional)</label>
+            <input type="number" id="homeLocLat" placeholder="e.g. 12.9716" step="any" />
+          </div>
+          <div class="form-group" style="flex:1">
+            <label for="homeLocLng">Longitude (optional)</label>
+            <input type="number" id="homeLocLng" placeholder="e.g. 77.5946" step="any" />
+          </div>
+        </div>
+        <p class="form-hint">💡 Leave lat/lng blank to auto-geocode from address.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalHomeLocation')">Cancel</button>
+        <button class="btn-primary" id="btnSaveHomeLocation">
+          <span id="btnSaveHomeLocationText">Save Location</span>
+          <span class="btn-spinner" id="btnSaveHomeLocationSpinner" style="display:none;"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add College Modal -->
+  <div class="modal-overlay" id="modalAddCollege">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Add Medical College</h2>
+        <button class="btn-close" onclick="closeModal('modalAddCollege')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="collegeName">College Name <span class="required">*</span></label>
+          <input type="text" id="collegeName" placeholder="e.g. All India Institute of Medical Sciences" />
+        </div>
+        <div class="form-group">
+          <label for="collegeAddress">Full Address <span class="required">*</span></label>
+          <textarea id="collegeAddress" rows="3" placeholder="e.g. Ansari Nagar East, New Delhi 110029"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="collegeCity">City / State</label>
+          <input type="text" id="collegeCity" placeholder="e.g. New Delhi, Delhi" />
+        </div>
+        <div class="form-group">
+          <label for="collegePhone">Phone (optional)</label>
+          <input type="text" id="collegePhone" placeholder="e.g. +91-11-26588500" />
+        </div>
+        <div class="form-group">
+          <label for="collegeWebsite">Website (optional)</label>
+          <input type="url" id="collegeWebsite" placeholder="https://aiims.edu" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalAddCollege')">Cancel</button>
+        <button class="btn-primary" id="btnSaveCollege">
+          <span id="btnSaveCollegeText">Add &amp; Calculate</span>
+          <span class="btn-spinner" id="btnSaveCollegeSpinner" style="display:none;"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import PDF Modal -->
+  <div class="modal-overlay" id="modalImportPDF">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h2>Import Colleges from PDF / Text</h2>
+        <button class="btn-close" onclick="closeModal('modalImportPDF')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="form-hint">Paste college addresses below — one per line. Format: <code>College Name | Address</code></p>
+        <div class="form-group">
+          <label>Upload PDF File</label>
+          <div class="file-drop-zone" id="fileDropZone">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <p>Drag &amp; drop a PDF here, or <label class="file-label" for="pdfFileInput">browse</label></p>
+            <input type="file" id="pdfFileInput" accept=".pdf,.txt" style="display:none" />
+            <span class="file-name" id="pdfFileName">No file selected</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="bulkTextInput">Or paste addresses manually:</label>
+          <textarea id="bulkTextInput" rows="10" placeholder="AIIMS New Delhi | Ansari Nagar East, New Delhi 110029&#10;Maulana Azad Medical College | Bahadur Shah Zafar Marg, New Delhi 110002&#10;..."></textarea>
+        </div>
+        <div id="parsedPreview" style="display:none;">
+          <div class="preview-header">
+            <span id="parsedCount">0 colleges detected</span>
+            <button class="btn-sm" id="btnClearParsed">Clear</button>
+          </div>
+          <div class="parsed-list" id="parsedList"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modalImportPDF')">Cancel</button>
+        <button class="btn-primary" id="btnImportConfirm">
+          <span id="btnImportConfirmText">Import All</span>
+          <span class="btn-spinner" id="btnImportConfirmSpinner" style="display:none;"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- App JS -->
+  <script src="app.js"></script>
+</body>
+</html>
