@@ -187,25 +187,36 @@ function loadState() {
     if (active)   state.activeHomeId  = active;
   } catch (e) { console.warn('Failed to load state', e); }
 
-  // Ensure default home location exists if empty or missing kaziwad
-  if (state.homeLocations.length === 0) {
+  // Guarantee default home location (Kaziwad Bhavnagar) exists
+  if (!Array.isArray(state.homeLocations) || state.homeLocations.length === 0) {
     state.homeLocations = [DEFAULT_HOME];
     state.activeHomeId = DEFAULT_HOME.id;
-  } else if (!state.homeLocations.some(h => h.name.toLowerCase().includes('kaziwad'))) {
+  } else if (!state.homeLocations.some(h => h.name && h.name.toLowerCase().includes('kaziwad'))) {
     state.homeLocations.unshift(DEFAULT_HOME);
     if (!state.activeHomeId) state.activeHomeId = DEFAULT_HOME.id;
   }
 
-  // Ensure all known colleges have coordinates filled in
-  state.colleges.forEach(c => {
-    if (!c.lat || !c.lng) {
-      const match = PDF_HOSPITALS.find(p => p.name.toLowerCase() === c.name.toLowerCase());
-      if (match && match.lat && match.lng) {
-        c.lat = match.lat;
-        c.lng = match.lng;
+  // Ensure activeHomeId is valid
+  if (!state.activeHomeId || !state.homeLocations.some(h => h.id === state.activeHomeId)) {
+    const kaziwad = state.homeLocations.find(h => h.name && h.name.toLowerCase().includes('kaziwad'));
+    state.activeHomeId = kaziwad ? kaziwad.id : (state.homeLocations[0]?.id || DEFAULT_HOME.id);
+  }
+
+  // Ensure colleges list is never empty; auto-seed PDF hospitals
+  if (!Array.isArray(state.colleges) || state.colleges.length < 50) {
+    loadPDFHospitals();
+  } else {
+    // Ensure all known colleges have coordinates filled in
+    state.colleges.forEach(c => {
+      if (!c.lat || !c.lng) {
+        const match = PDF_HOSPITALS.find(p => p.name.toLowerCase() === c.name.toLowerCase());
+        if (match && match.lat && match.lng) {
+          c.lat = match.lat;
+          c.lng = match.lng;
+        }
       }
-    }
-  });
+    });
+  }
 }
 
 // ──────────────────────────────────────────────────
@@ -1329,7 +1340,7 @@ function closeMobileSidebar() {
 
 function wireEvents() {
   // Sidebar toggle & mobile drawer
-  document.getElementById('btnMenuToggle').addEventListener('click', () => toggleSidebar());
+  document.getElementById('btnMenuToggle')?.addEventListener('click', () => toggleSidebar());
   
   const btnCloseSidebar = document.getElementById('btnCloseSidebar');
   if (btnCloseSidebar) btnCloseSidebar.addEventListener('click', closeMobileSidebar);
@@ -1359,8 +1370,8 @@ function wireEvents() {
   });
 
   // Map toggle
-  document.getElementById('btnToggleMap').addEventListener('click', () => {
-    document.getElementById('mapPanel').classList.toggle('collapsed');
+  document.getElementById('btnToggleMap')?.addEventListener('click', () => {
+    document.getElementById('mapPanel')?.classList.toggle('collapsed');
     setTimeout(() => state.map?.invalidateSize(), 310);
   });
 
@@ -1385,31 +1396,32 @@ function wireEvents() {
   }
 
   // Add home location
-  document.getElementById('btnAddHomeLocation').addEventListener('click', () => openModal('modalHomeLocation'));
-  document.getElementById('btnSaveHomeLocation').addEventListener('click', saveHomeLocation);
+  document.getElementById('btnAddHomeLocation')?.addEventListener('click', () => openModal('modalHomeLocation'));
+  document.getElementById('btnSaveHomeLocation')?.addEventListener('click', saveHomeLocation);
 
   // Add college
-  document.getElementById('btnAddCollege').addEventListener('click', () => openModal('modalAddCollege'));
-  document.getElementById('btnSaveCollege').addEventListener('click', saveCollege);
+  document.getElementById('btnAddCollege')?.addEventListener('click', () => openModal('modalAddCollege'));
+  document.getElementById('btnSaveCollege')?.addEventListener('click', saveCollege);
 
   // Enter key in forms
   ['homeLocName','homeLocAddress','homeLocLat','homeLocLng'].forEach(id => {
-    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') saveHomeLocation(); });
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') saveHomeLocation(); });
   });
   ['collegeName','collegeAddress','collegeCity','collegePhone','collegeWebsite'].forEach(id => {
-    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') saveCollege(); });
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') saveCollege(); });
   });
 
   // Search
   let searchTimeout;
-  document.getElementById('searchInput').addEventListener('input', e => {
+  document.getElementById('searchInput')?.addEventListener('input', e => {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => renderColleges(e.target.value), 200);
   });
 
   // Sort
-  document.getElementById('sortSelect').addEventListener('change', () => {
-    renderColleges(document.getElementById('searchInput').value);
+  document.getElementById('sortSelect')?.addEventListener('change', () => {
+    const val = document.getElementById('searchInput')?.value || '';
+    renderColleges(val);
   });
 
   // Close modals on backdrop click
@@ -1423,39 +1435,46 @@ function wireEvents() {
   });
 
   // Import PDF button
-  document.getElementById('btnImportPDF').addEventListener('click', () => {
+  document.getElementById('btnImportPDF')?.addEventListener('click', () => {
     state.parsedImport = [];
-    document.getElementById('parsedPreview').style.display = 'none';
-    document.getElementById('parsedList').innerHTML = '';
-    document.getElementById('bulkTextInput').value = '';
-    document.getElementById('pdfFileName').textContent = 'No file selected';
+    const preview = document.getElementById('parsedPreview');
+    if (preview) preview.style.display = 'none';
+    const list = document.getElementById('parsedList');
+    if (list) list.innerHTML = '';
+    const input = document.getElementById('bulkTextInput');
+    if (input) input.value = '';
+    const fileLabel = document.getElementById('pdfFileName');
+    if (fileLabel) fileLabel.textContent = 'No file selected';
     openModal('modalImportPDF');
   });
 
   // PDF file input
   const pdfInput = document.getElementById('pdfFileInput');
-  const pdfDrop  = document.getElementById('pdfDropZone');
+  const pdfDrop  = document.getElementById('fileDropZone') || document.getElementById('pdfDropZone');
 
-  pdfDrop.addEventListener('click', () => pdfInput.click());
-  pdfDrop.addEventListener('dragover', e => { e.preventDefault(); pdfDrop.classList.add('dragover'); });
-  pdfDrop.addEventListener('dragleave', () => pdfDrop.classList.remove('dragover'));
-  pdfDrop.addEventListener('drop', async e => {
-    e.preventDefault();
-    pdfDrop.classList.remove('dragover');
-    const file = e.dataTransfer.files[0];
-    if (file) handlePDFFile(file);
-  });
-  pdfInput.addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (file) handlePDFFile(file);
-  });
+  if (pdfDrop && pdfInput) {
+    pdfDrop.addEventListener('click', () => pdfInput.click());
+    pdfDrop.addEventListener('dragover', e => { e.preventDefault(); pdfDrop.classList.add('dragover'); });
+    pdfDrop.addEventListener('dragleave', () => pdfDrop.classList.remove('dragover'));
+    pdfDrop.addEventListener('drop', async e => {
+      e.preventDefault();
+      pdfDrop.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) handlePDFFile(file);
+    });
+    pdfInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) handlePDFFile(file);
+    });
+  }
 
   async function handlePDFFile(file) {
     if (!file.name.endsWith('.pdf') && file.type !== 'application/pdf') {
       showToast('Please select a valid PDF file', 'error');
       return;
     }
-    document.getElementById('pdfFileName').textContent = file.name;
+    const fileNameEl = document.getElementById('pdfFileName');
+    if (fileNameEl) fileNameEl.textContent = file.name;
     showStatusBar('Extracting text from PDF…');
     try {
       const text = await extractTextFromPDF(file);
@@ -1463,7 +1482,8 @@ function wireEvents() {
       const items = parseImportText(text);
       if (items.length === 0) {
         showToast('No college records could be parsed automatically. Try pasting text below.', 'error');
-        document.getElementById('bulkTextInput').value = text.slice(0, 3000);
+        const bulk = document.getElementById('bulkTextInput');
+        if (bulk) bulk.value = text.slice(0, 3000);
       } else {
         renderParsedPreview(items);
         showToast(`Parsed ${items.length} colleges from PDF!`, 'success');
@@ -1475,8 +1495,25 @@ function wireEvents() {
   }
 
   // Bulk text parse button
-  document.getElementById('btnParseText').addEventListener('click', () => {
-    const raw = document.getElementById('bulkTextInput').value.trim();
+  const btnParse = document.getElementById('btnParseText');
+  if (btnParse) {
+    btnParse.addEventListener('click', parseManualTextInput);
+  }
+
+  // Auto-parse on typing or pasting into textarea
+  const bulkInput = document.getElementById('bulkTextInput');
+  if (bulkInput) {
+    bulkInput.addEventListener('input', () => {
+      const raw = bulkInput.value.trim();
+      if (raw.length > 10) {
+        const items = parseImportText(raw);
+        if (items.length > 0) renderParsedPreview(items);
+      }
+    });
+  }
+
+  function parseManualTextInput() {
+    const raw = (document.getElementById('bulkTextInput')?.value || '').trim();
     if (!raw) { showToast('Paste some text first', 'error'); return; }
     const items = parseImportText(raw);
     if (items.length === 0) {
@@ -1485,38 +1522,54 @@ function wireEvents() {
       renderParsedPreview(items);
       showToast(`Detected ${items.length} colleges`, 'success');
     }
-  });
+  }
 
   // Clear preview
-  document.getElementById('btnClearPreview').addEventListener('click', () => {
-    state.parsedImport = [];
-    document.getElementById('parsedPreview').style.display = 'none';
-    document.getElementById('bulkTextInput').value = '';
-  });
+  const btnClearParsed = document.getElementById('btnClearParsed') || document.getElementById('btnClearPreview');
+  if (btnClearParsed) {
+    btnClearParsed.addEventListener('click', () => {
+      state.parsedImport = [];
+      const preview = document.getElementById('parsedPreview');
+      if (preview) preview.style.display = 'none';
+      const input = document.getElementById('bulkTextInput');
+      if (input) input.value = '';
+    });
+  }
 
   // Import confirm
-  document.getElementById('btnImportConfirm').addEventListener('click', importColleges);
+  const btnImportConfirm = document.getElementById('btnImportConfirm');
+  if (btnImportConfirm) {
+    btnImportConfirm.addEventListener('click', importColleges);
+  }
 
-  // Clear all
-  document.getElementById('btnClearAll').addEventListener('click', () => {
-    if (!confirm('Are you sure you want to clear ALL data? This cannot be undone.')) return;
-    state.colleges = [];
-    state.homeLocations = [];
-    state.activeHomeId = null;
-    state.distances = {};
-    Object.values(state.markers).forEach(m => state.map?.removeLayer(m));
-    state.markers = {};
-    clearDistanceLines();
-    if (state.homeMarker) { state.map?.removeLayer(state.homeMarker); state.homeMarker = null; }
-    localStorage.removeItem(LS_KEY_COLLEGES);
-    localStorage.removeItem(LS_KEY_HOMES);
-    localStorage.removeItem(LS_KEY_ACTIVE);
-    renderHomeLocations();
-    renderColleges();
-    renderStats();
-    document.getElementById('activeLocationName').textContent = 'Select a home location';
-    showToast('All data cleared', 'info');
-  });
+  // Clear / Reset all
+  const btnClearAll = document.getElementById('btnClearAll');
+  if (btnClearAll) {
+    btnClearAll.addEventListener('click', () => {
+      if (!confirm('Reset all data back to the default 73 medical colleges and Kaziwad Bhavnagar?')) return;
+      localStorage.clear();
+      state.colleges = [];
+      state.homeLocations = [];
+      state.activeHomeId = null;
+      state.distances = {};
+      Object.values(state.markers).forEach(m => state.map?.removeLayer(m));
+      state.markers = {};
+      clearDistanceLines();
+      if (state.homeMarker) { state.map?.removeLayer(state.homeMarker); state.homeMarker = null; }
+      loadState();
+      renderHomeLocations();
+      renderColleges();
+      renderStats();
+      const home = getActiveHome();
+      if (home) {
+        const nameEl = document.getElementById('activeLocationName');
+        if (nameEl) nameEl.textContent = home.name;
+        updateHomeMarker(home);
+        drawDistanceLines();
+      }
+      showToast('Reset to default 73 colleges & Kaziwad Bhavnagar!', 'success');
+    });
+  }
 
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
@@ -1710,48 +1763,103 @@ function loadPDFHospitals() {
 // INIT
 // ──────────────────────────────────────────────────
 function init() {
-  loadState();
-  initMap();
-  wireEvents();
+  try {
+    loadState();
+  } catch (e) {
+    console.error('loadState error:', e);
+  }
+
+  try {
+    initMap();
+  } catch (e) {
+    console.error('initMap error:', e);
+  }
+
+  try {
+    wireEvents();
+  } catch (e) {
+    console.error('wireEvents error:', e);
+  }
 
   // Auto-load PDF hospitals if list empty
-  if (state.colleges.length === 0) {
-    const added = loadPDFHospitals();
-    if (added > 0) {
-      showToast(`📋 Loaded ${added} hospitals from your PDF list!`, 'success');
+  try {
+    if (!state.colleges || state.colleges.length === 0) {
+      const added = loadPDFHospitals();
+      if (added > 0) {
+        showToast(`📋 Loaded ${added} hospitals from your PDF list!`, 'success');
+      }
     }
+  } catch (e) {
+    console.error('loadPDFHospitals error:', e);
   }
 
   // Restore active home marker + name
-  const home = getActiveHome();
-  if (home) {
-    document.getElementById('activeLocationName').textContent = home.name;
-    updateHomeMarker(home);
+  try {
+    const home = getActiveHome();
+    if (home) {
+      const activeName = document.getElementById('activeLocationName');
+      if (activeName) activeName.textContent = home.name;
+      updateHomeMarker(home);
+    }
+  } catch (e) {
+    console.error('active home marker error:', e);
   }
 
   // Render home locations sidebar
-  renderHomeLocations();
-
-  // Add all college markers
-  state.colleges.forEach(c => addCollegeMarker(c));
-
-  // Mobile view initialization
-  setMobileView('list');
-
-  // Render college grid & stats
-  renderColleges();
-  renderStats();
-
-  // Draw distance lines from home to all locations
-  if (home) {
-    drawDistanceLines();
+  try {
+    renderHomeLocations();
+  } catch (e) {
+    console.error('renderHomeLocations error:', e);
   }
 
-  fitMapToAll();
+  // Add all college markers
+  try {
+    if (state.map && Array.isArray(state.colleges)) {
+      state.colleges.forEach(c => addCollegeMarker(c));
+    }
+  } catch (e) {
+    console.error('addCollegeMarker error:', e);
+  }
+
+  // Mobile view initialization
+  try {
+    setMobileView('list');
+  } catch (e) {
+    console.error('setMobileView error:', e);
+  }
+
+  // Render college grid & stats
+  try {
+    renderColleges();
+    renderStats();
+  } catch (e) {
+    console.error('renderColleges/renderStats error:', e);
+  }
+
+  // Draw distance lines from home to all locations
+  try {
+    const home = getActiveHome();
+    if (home) {
+      drawDistanceLines();
+    }
+  } catch (e) {
+    console.error('drawDistanceLines error:', e);
+  }
+
+  try {
+    fitMapToAll();
+  } catch (e) {
+    console.error('fitMapToAll error:', e);
+  }
 
   // Compute road distances in background
-  if (home && state.colleges.length > 0) {
-    recalcAllDistances();
+  try {
+    const home = getActiveHome();
+    if (home && state.colleges && state.colleges.length > 0) {
+      recalcAllDistances();
+    }
+  } catch (e) {
+    console.error('recalcAllDistances error:', e);
   }
 }
 

@@ -281,7 +281,10 @@
         </div>
         <div class="form-group">
           <label for="bulkTextInput">Or paste addresses manually:</label>
-          <textarea id="bulkTextInput" rows="10" placeholder="AIIMS New Delhi | Ansari Nagar East, New Delhi 110029&#10;Maulana Azad Medical College | Bahadur Shah Zafar Marg, New Delhi 110002&#10;..."></textarea>
+          <textarea id="bulkTextInput" rows="8" placeholder="AIIMS New Delhi | Ansari Nagar East, New Delhi 110029&#10;Maulana Azad Medical College | Bahadur Shah Zafar Marg, New Delhi 110002&#10;..."></textarea>
+          <div style="margin-top:6px;display:flex;gap:8px;">
+            <button class="btn-sm" id="btnParseText" type="button">Parse Pasted Text</button>
+          </div>
         </div>
         <div id="parsedPreview" style="display:none;">
           <div class="preview-header">
