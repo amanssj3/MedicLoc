@@ -5,8 +5,7 @@
   "main": "index.html",
   "scripts": {
     "start": "npx serve .",
-    "dev": "python3 -m http.server 8080",
-    "build": "echo 'Static build ready'"
+    "dev": "python3 -m http.server 8080"
   },
   "keywords": [
     "medical",
